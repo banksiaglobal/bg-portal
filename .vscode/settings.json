@@ -1,0 +1,69 @@
+{
+  "files.insertFinalNewline": true,
+  // Sync changes from VS Code and external tools such as Git to local IRIS.
+  // Branch changes and merges therefore import and compile affected files.
+  "objectscript.syncLocalChanges": "all",
+  "files.associations": {
+    "Dockerfile*": "dockerfile",
+    "iris.script": "objectscript"
+  },
+  "objectscript.compileFlags": "cukb/compileembedded=1",
+  "objectscript.conn": {
+    "active": true,
+    "ns": "USER",
+    "username": "_SYSTEM",
+    "password": "SYS",
+    "links": {
+      "UnitTest Portal": "${serverUrl}/csp/sys/%25UnitTest.Portal.Home.cls?$NAMESPACE=CIS"
+    },
+    "docker-compose": {
+      "service": "iris"
+    }
+  },
+  "objectscript.export": {
+    "folder": "src",
+    "addCategory": true,
+    "map": {
+      "oth(.*)": "$1",
+    },
+    "atelier": true,
+    "generated": false,
+    "filter": "",
+    "exactFilter": "",
+    "category": "*",
+    "noStorage": false,
+    "dontExportIfNoChanges": true,
+    "maxConcurrentConnections": 0,
+    "mapped": true
+  },
+  "intersystems.language-server.formatting.commands.case": "lower",
+  "intersystems.language-server.formatting.system.case": "lower",
+  "[objectscript-class]": { "editor.formatOnSave": true },
+  "[objectscript-csp]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "sqltools.connections": [
+    {
+      "namespace": "CIS",
+      "connectionMethod": "Server and Port",
+      "showSystem": false,
+      "previewLimit": 50,
+      "server": "localhost",
+      "port": 59773,
+      "https": false,
+      "askForPassword": false,
+      "driver": "InterSystems IRIS",
+      "name": "conn",
+      "username": "_SYSTEM",
+      "password": "SYS"
+    }
+  ],
+  "cisVerification.e2e.username": "Sergei",
+  "cisVerification.e2e.roadsideCaseId": "178624",
+  "cisVerification.e2e.incomingCaseId": "178623",
+  "cisVerification.e2e.policyNumber": "123123",
+  "cisVerification.e2e.registration": "1ASD12",
+  "cisVerification.e2e.providerQuery": "auto",
+  "cisVerification.e2e.providerOption": "ang"
+}

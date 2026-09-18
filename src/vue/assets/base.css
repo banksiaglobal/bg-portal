@@ -1,0 +1,7 @@
+:root {
+    --p-tooltip-max-width: 60rem !important;
+  }
+
+body {
+  color: #000;
+}

@@ -1,0 +1,10 @@
+    // Dev convenience only: never expire passwords in the local container.
+    zn "%SYS"
+    do ##class(Security.Users).UnExpireUserPasswords("*")
+    // Install ZPM
+    s version="latest" s r=##class(%Net.HttpRequest).%New(),r.Server="pm.community.intersystems.com",r.SSLConfiguration="ISC.FeatureTracker.SSL.Config" d r.Get("/packages/zpm/"_version_"/installer"),$system.OBJ.LoadStream(r.HttpResponse.Data,"c")
+    zpm "enable -map -globally"
+
+    zn "USER"
+    zpm "load /home/irisowner/irisbuild/ -v":1:1
+    halt

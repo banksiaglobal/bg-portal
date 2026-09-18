@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="25">
+  <Document name="Portal.ZPM">
+    <Module>
+      <Name>Portal</Name>
+      <Version>0.1.0</Version>
+      <Description>IRIS management portal</Description>
+      <Packaging>module</Packaging>
+      <SourcesRoot>src</SourcesRoot>
+      <Resource Name="Banksia.PKG"/>
+      <Resource Name="Portal.PKG"/>
+      <CSPApplication
+        Url="/csp/portal"
+        SourcePath="/src/csp/portal"
+        DeployPath="${cspdir}/portal"
+        ServeFiles="1"
+        Recurse="1"
+        CookiePath="/csp/portal"
+        UseCookies="2"
+        MatchRoles=":${dbrole}"
+        PasswordAuthEnabled="1"
+        UnauthenticatedEnabled="0"
+        CSRFToken="1"
+        DefaultTimeout="900"
+      />
+    </Module>
+  </Document>
+</Export>
