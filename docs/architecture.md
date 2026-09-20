@@ -16,10 +16,24 @@ ObjectScript and renders at request time.
 | `Portal.Core` | The built-in contribution (nav, user menu, footer, web-app actions). Core and site extensions use the same path. |
 | `Portal.Ext.Example` | Reference extension: a computed column and a navigate action on the web-app list. Disable or delete once real ones exist. |
 | `Portal.Extensions` | Admin screen: installed extensions, enable/disable, last errors, collisions. |
-| `Portal.WebApp.Service` | Only place that touches `Security.Applications`; swap for `%Api.Admin` later without touching pages. |
+| `Portal.Api.Service` | Abstract base for domain adapters over `%Api.Admin.Endpoints.*`: drives an endpoint in-process (`Invoke`), whitelists request fields against its schema (`SchemaSubset`), and provides `Get`/`Delete`/`Enable`/`Disable`. Pages never touch `%Api.Admin.*` or `Security.*`. |
+| `Portal.WebApp.Service` | `Portal.Api.Service` over `%Api.Admin.Endpoints.WebApp.App`; adds `List` and `Save`. |
 | `Portal.WebApp.List` / `Edit` | First migrated screens. |
+| `Portal.User.Service` | `Portal.Api.Service` over `%Api.Admin.Endpoints.Security.User`; adds `List`, `Save` (POST for new, PUT for existing), `ChangePassword`, and `RoleNames` from `%Api.Admin.Endpoints.Security.Role`. |
+| `Portal.User.List` / `Edit` | User list and edit screens; page ids `user.list` / `user.edit`. |
+| `Portal.Role.Service` | `Portal.Api.Service` over `%Api.Admin.Endpoints.Security.Role`; adds `List`, `Save` (PUT upserts), `Members` (owner list, type 10) and `Names`. |
+| `Portal.Role.List` / `Edit` | Role list and edit (granted roles, resource/permission table, read-only members); page ids `role.list` / `role.edit`. |
+| `Portal.Resource.Service` | `Portal.Api.Service` over `%Api.Admin.Endpoints.Security.Resource`; adds `List`, `Find`, `Save`, `Names`, and overrides `Get` (endpoint returns `{}` not an error for a missing name) and `Delete` (enforces `AllowDelete`, which the endpoint ignores). The empty-`PublicPermission` cases go to `Security.Resources` directly because the endpoint cannot express them. |
+| `Portal.Resource.List` / `Edit` | Resource list and edit; page ids `resource.list` / `resource.edit`. |
+| `Portal.WebSession.Service` | `Portal.Api.Service` over `%Api.Admin.Endpoints.WebSession` (`IDPARAM = "id"`, rows keyed on `ID`); `List` and `EndSession`. No GET or edit. |
+| `Portal.WebSession.List` | Web session list with an End-session action; page id `websession.list`. Resource `%Admin_Operate`. |
+| `Portal.Process.Service` | `Portal.Api.Service` over `%Api.Admin.Endpoints.Process` (`IDPARAM = "id"`, rows keyed on `Pid`); adds `List`, `Get`, `Suspend`, `Resume`, `Terminate` and `Broadcast`. No create/edit. |
+| `Portal.Process.List` / `Detail` | Process list (multi-select + broadcast dialog) and read-only detail with variables; page ids `process.list` / `process.detail`. Resource `%Admin_Operate`. |
 
 ## Adding a page
+
+For a List + Edit screen over an `%Api.Admin` endpoint, follow
+[`adding-a-management-screen.md`](adding-a-management-screen.md).
 
 ```objectscript
 Class My.Portal.Thing Extends Portal.Page

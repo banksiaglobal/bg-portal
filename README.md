@@ -5,7 +5,9 @@ pages carrying Vue templates, a thin `Banksia.Bloom` runtime, and a declarative
 extension registry. No SPA, no client router, no frontend build for extensions.
 
 See [`docs/architecture.md`](docs/architecture.md) for the architecture,
-how to add a page and how to write an extension.
+how to add a page and how to write an extension, and
+[`docs/adding-a-management-screen.md`](docs/adding-a-management-screen.md) for the
+recipe behind the Web Application / User screens.
 
 ## Layout
 
@@ -54,3 +56,20 @@ set ^Portal.Config("SYSTEM_TYPE") = "LIVE"   ; LIVE | TEST | DEV (default DEV)
   `src/vue/components.ts` (PrimeVue components are registered in `primeVue.ts`).
 - Tailwind scans `src/cls` for class names, so a new utility class in a template
   needs a rebuild of the frontend bundle.
+
+## License
+
+Copyright (c) Banksia Global, 2026.
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published
+by the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
