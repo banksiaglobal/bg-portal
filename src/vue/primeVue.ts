@@ -18,7 +18,7 @@ import Tab from 'primevue/tab';
 import TabPanels from 'primevue/tabpanels';
 import TabPanel from 'primevue/tabpanel';
 import BlockUI from 'primevue/blockui';
-import { Card, DatePicker, Fluid, InputSwitch, ToggleSwitch, MultiSelect, Paginator, Password, Select, SelectButton, Sidebar, Tag, Textarea, Dialog, Menubar, Menu, Drawer } from 'primevue';
+import { Card, DatePicker, Fluid, InputSwitch, ToggleSwitch, Checkbox, MultiSelect, Paginator, Password, Select, SelectButton, Sidebar, Tag, Textarea, Dialog, Menubar, Menu, Drawer } from 'primevue';
 import type { App } from 'vue';
 
 export default function usePrimeVue(app: App<Element>) {
@@ -79,6 +79,7 @@ export default function usePrimeVue(app: App<Element>) {
   app.component('InputIcon', InputIcon);
   app.component('InputSwitch', InputSwitch);
   app.component('ToggleSwitch', ToggleSwitch);
+  app.component('Checkbox', Checkbox);
   app.component('Fluid', Fluid);
   app.component('Tabs', Tabs);
   app.component('Tab', Tab);

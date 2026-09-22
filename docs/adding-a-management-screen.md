@@ -98,47 +98,68 @@ following calls run as that user and fail with `<PROTECT>` on `zn "%SYS"`.
 
 ## 4. Write `Portal.<Thing>.List`
 
-Copy `src/cls/Portal/User/List.cls` verbatim and change:
+Extend `Portal.ListPage`; copy `src/cls/Portal/User/List.cls` (~35 lines). Supply:
 
-- `PAGEID` (`thing.list`), `TITLE`, `RESOURCE` (from `ResourcesOR`);
-- `CoreColumns()` — keys must match the **list** row shape from step 2
-  (`"type": "boolean"` renders a Tag);
-- `BuildRows` — `##class(Portal.Thing.Service).List()`;
-- `createNew` / `openRow` URLs and the heading/subtitle text;
-- `ConfirmDialog` title suffix.
+- `PAGEID` (`thing.list`), `TITLE`, `SUBTITLE`, `RESOURCE` (from `ResourcesOR`);
+- `CREATEURL` / `NEWLABEL` for the "New" button (omit `CREATEURL` when there is no create);
+- `ROWURL` with `{Field}` placeholders for the row click (omit for no detail page);
+- `ROWKEY` when rows are not keyed on `Name` (`Pid`, `ID`);
+- `CONFIRMNOUN` — the suffix of the confirm dialog title (`" user"`);
+- `CoreColumns()` — keys must match the **list** row shape from step 2. Column
+  `type` may be `boolean` (Tag), `tag` (Tag with a `severities` map by value) or `mono`;
+- `Rows()` — `##class(Portal.Thing.Service).List()`.
 
-Everything else (global filter, extension columns, `runAction`/`executePending`,
-`Reload`) is generic and comes from `Portal.Page` + `Portal.Ext.Registry`.
+Everything else (global filter, extension columns, actions, confirm, reload) is
+inherited. For operations that need extra UI, add `XData ToolbarTemplate` (header
+buttons) and `XData ExtraTemplate` (dialogs) plus the `WebMethod`/`ClientMethod`s
+they call — `Portal.Process.List` does this for broadcast, together with
+`SELECTION = "multiple"`, `SHOWREFRESH` and `HINT`. Override `describeRow(row)`
+when the confirm message should say more than the row key.
 
 ## 5. Write `Portal.<Thing>.Edit`
 
-Copy `src/cls/Portal/User/Edit.cls`. Rules:
+Extend `Portal.EditPage`; copy `src/cls/Portal/WebApp/Edit.cls` (~70 lines). Supply:
 
-- `%OnNew` loads `Service.Get(name)`; when it returns `""` the page is in
-  create mode and seeds a default object **containing every key the template
-  binds**, otherwise Vue renders `undefined`.
-- Save goes through one `WebMethod` (`SaveUser`) that returns `..ActionResult(sc)`;
-  the client parses `{ok, error}`.
-- Extra operations (change password) get their own `WebMethod` + button; do not
-  overload Save.
+- `PAGEID`, `TITLE`, `RESOURCE`, `NOUN` ("New <noun>" heading), `LISTURL`;
+- `Fields()` — one descriptor per input:
+  `{key, label, type, order, section, colSpan, placeholder, help, options, clearable, when, disabledIf, newOnly, existingOnly}`.
+  Types: `text` (default), `number`, `password`, `date` (bound as the endpoint's
+  `YYYY-MM-DD` string), `textarea`, `select`, `multiselect`, `toggle`, `perms`
+  (R/W/U string). `options` is an array or the name of a page property holding one.
+  Toggles are gathered into a row at the end of their section; `section` groups
+  fields into a titled card;
+- `Load(name)` — `Service.Get(name)`, returning `""` when missing (the base then
+  switches to create mode and uses `Defaults()`, which **must contain every key a
+  field binds**, otherwise Vue renders `undefined`);
+- `Save(obj)` — `Service.Save(obj)`; returns a `%Status`;
+- `OnLoad()` — populate lookup properties (`namespaces`, `roles`) that `options` name;
+- `Subtitle()` — text under the heading in edit mode.
+
+The `Name` field (`NAMEFIELD`) is read-only once the object exists. Save goes
+through the inherited `SaveObject` WebMethod; on success the browser returns to
+`LISTURL`. Extra operations (change password) get their own `WebMethod` + button
+in `XData ExtraTemplate`; so do sub-tables the descriptors cannot express
+(`Portal.Role.Edit`'s resource/permission table). Do not overload Save.
+
 - `ClientMethod`s become Vue `methods`; they are made `async` automatically when
-  the body contains `await`.
-- Lookup lists (namespaces, roles) are computed in `%OnNew` and exposed as
-  properties. `Portal.WebApp.Edit.ListNamespaces()` is reusable.
+  the body contains `await`. Do not name one the same as a server method ignoring
+  case (`Save`/`save` collide in ObjectScript).
 - Available components: PrimeVue set registered in `src/vue/primeVue.ts`
   (`InputText`, `Password`, `Select`, `MultiSelect`, `ToggleSwitch`, `DatePicker`,
   `Textarea`, `Card`, `Tag`, `DataTable`, …; `Button` is registered as `PButton`)
   plus `ConfirmDialog` from `src/vue/components.ts`.
-- Dates: bind the endpoint's `YYYY-MM-DD` string directly; it round-trips.
+
+Extensions can add fields to the page through the `page.<pageId>.fields` slot;
+the base seeds and persists them through the contributing class, so `Save` never sees them.
 
 ## 6. Wire it into the shell
 
-`Portal.Core`:
-- `NavItems()` — add `{"id": "security.things", "label": …, "group": …, "url": "Portal.Thing.List.cls", "resource": …}`.
-- `Actions(pageId)` — return a `…Actions()` array for `thing.list`: `edit` (kind
-  `navigate`, `url` with `{Name}`), `disable`/`enable` (`visibleIf` on `Enabled`),
-  `delete` (`confirm: true`). `class`/`method` point at the service's row-taking
-  methods.
+`Portal.Core.Contribute(slot)`:
+- `shell.nav` — add `{"id": "security.things", "label": …, "group": …, "url": "Portal.Thing.List.cls", "resource": …}` to `Nav()`.
+- `page.thing.list.actions` — return a `ThingActions()` array: `edit` (kind
+  `navigate`, `url` with `{Name}`), `disable`/`enable` (`when: "row.Enabled"` /
+  `"!row.Enabled"`), `delete` (`confirm: true`). `class`/`method` point at the
+  service's row-taking methods.
 
 Site extensions may add more via `Portal.Ext.Contribution` using the same page ids.
 

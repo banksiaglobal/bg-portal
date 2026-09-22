@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="25">
+  <Document name="portal-ext-piratemode.ZPM">
+    <Module>
+      <Name>portal-ext-piratemode</Name>
+      <Version>1.0.0</Version>
+      <Description>Fun demo extension: reskins the portal as a pirate's log and turns Save buttons and Yes/No tags into pirate lingo.</Description>
+      <Keywords>iris-portal extension fun</Keywords>
+      <Packaging>module</Packaging>
+      <SourcesRoot>src</SourcesRoot>
+      <Dependencies>
+        <ModuleReference>
+          <Name>portal</Name>
+          <Version>0.1.*</Version>
+        </ModuleReference>
+      </Dependencies>
+      <Resource Name="PortalExt.PirateMode.PKG"/>
+      <Invoke Class="Portal.Ext.Registry" Method="Sync" Phase="Activate" When="After" CheckStatus="true"/>
+      <Invoke Class="Portal.Ext.Registry" Method="Uninstall" Phase="Unconfigure" When="Before" CheckStatus="false">
+        <Arg>PortalExt.PirateMode.Contribution</Arg>
+        <Arg>0</Arg>
+      </Invoke>
+    </Module>
+  </Document>
+</Export>

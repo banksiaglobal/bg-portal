@@ -8,3 +8,5 @@ services:
       # Built frontend is served straight from the working tree; run `npm run watch` alongside.
       - ./src/csp/portal/ui/:/usr/irissys/csp/portal/ui/
       - ./src/cls/:/home/irisowner/src/cls/
+      # Extension modules; load one with: zpm "load /home/irisowner/extensions/<module>"
+      - ./extensions/:/home/irisowner/extensions/

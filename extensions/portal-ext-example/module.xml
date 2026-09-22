@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="25">
+  <Document name="portal-ext-example.ZPM">
+    <Module>
+      <Name>portal-ext-example</Name>
+      <Version>0.1.0</Version>
+      <Description>Reference extension for the IRIS Portal: one class per hook, shipped as a separate module.</Description>
+      <Keywords>iris-portal extension</Keywords>
+      <Packaging>module</Packaging>
+      <SourcesRoot>src</SourcesRoot>
+      <Dependencies>
+        <ModuleReference>
+          <Name>portal</Name>
+          <Version>0.1.*</Version>
+        </ModuleReference>
+      </Dependencies>
+      <Resource Name="PortalExt.Example.PKG"/>
+      <!-- Tell the portal registry about the new classes as soon as they are active (runs OnInstall),
+           and retire the contribution (runs OnUninstall) before ZPM removes the code. -->
+      <Invoke Class="Portal.Ext.Registry" Method="Sync" Phase="Activate" When="After" CheckStatus="true"/>
+      <Invoke Class="Portal.Ext.Registry" Method="Uninstall" Phase="Unconfigure" When="Before" CheckStatus="false">
+        <Arg>PortalExt.Example.Contribution</Arg>
+        <Arg>0</Arg>
+      </Invoke>
+    </Module>
+  </Document>
+</Export>

@@ -1,8 +1,14 @@
-/// A Vue component
+/// A Vue component. Properties become `data()`, ClientMethods and WebMethods become
+/// `methods`, the Template XData becomes `template`. PROPS lists the Vue props the
+/// component accepts (comma-separated), for components a page instantiates with
+/// bindings such as `<component :is="..." :row="data" />`.
 Class Banksia.Bloom.Component Extends %RegisteredObject
 {
 
 Parameter %JSONIGNOREINVALIDFIELD As BOOLEAN = 1;
+
+/// Comma-separated Vue prop names, e.g. "row,col". Empty means no props.
+Parameter PROPS;
 
 XData Template
 {
@@ -24,6 +30,11 @@ ClassMethod WriteComponentJs(componentName As %String = {$translate(..%ClassName
 	}
 
 	write componentName_"={",!
+	if ..#PROPS '= "" {
+		write "props: ["
+		for i=1:1:$length(..#PROPS,",") write $select(i>1:",",1:""),"'"_$zstrip($piece(..#PROPS,",",i),"<>W")_"'"
+		write "],",!
+	}
     write "data() {",!
     write "    return {",!
 	set status = self.WriteProps()
@@ -61,7 +72,8 @@ Method WriteProps() As %Status [ ServerOnly = 1 ]
 	set tSC = $$$OK
 
 	try {
-		set tCDef = ##class(%Dictionary.ClassDefinition).%OpenId(..%ClassName(1))
+		// Compiled definition so properties inherited from an abstract base (Portal.ListPage, ...) are emitted too.
+		set tCDef = ##class(%Dictionary.CompiledClass).%OpenId(..%ClassName(1))
 		if '$isobject(tCDef) {
 			write "// Unable to find class definition ",..%ClassName(1),!
 			quit
@@ -69,15 +81,17 @@ Method WriteProps() As %Status [ ServerOnly = 1 ]
 
 		set xdc = tCDef.Properties.Count()
 		for n = 1:1:xdc {
-			#; get XDATA as stream
 			set Prop=tCDef.Properties.GetAt(n)
+			continue:$extract(Prop.Name)="%"
+			set type = $piece(Prop.Type, ".", *)
+			continue:'$listfind($listbuild("String","DynamicArray","DynamicObject","Boolean","Integer"),type)
 			write Prop.Name_":"
-			if Prop.Type="%String" write """"_..GetXssSafeString($zconvert($property($this,Prop.Name),"O","JS"))_""""
-			if Prop.Type="%DynamicArray" write ..GetXssSafeString($method($property($this,Prop.Name),"%ToJSON"))
-			if Prop.Type="%DynamicObject" write ..GetXssSafeString($method($property($this,Prop.Name),"%ToJSON"))
-			if Prop.Type="%Boolean" write $select($property($this,Prop.Name):"true",1:"false")
+			if type="String" write """"_..GetXssSafeString($zconvert($property($this,Prop.Name),"O","JS"))_""""
+			if type="DynamicArray" write ..GetXssSafeString($method($property($this,Prop.Name),"%ToJSON"))
+			if type="DynamicObject" write ..GetXssSafeString($method($property($this,Prop.Name),"%ToJSON"))
+			if type="Boolean" write $select($property($this,Prop.Name):"true",1:"false")
+			if type="Integer" write $select($property($this,Prop.Name)="":"null",1:..GetXssSafeString($property($this,Prop.Name)))
 			write ","
-
 		}
 	}
 	catch(ex) {
@@ -97,7 +111,7 @@ Method WriteMethods() As %Status [ ServerOnly = 1 ]
 	set tSC = $$$OK
 
 	try {
-		set tCDef = ##class(%Dictionary.ClassDefinition).%OpenId(..%ClassName(1))
+		set tCDef = ##class(%Dictionary.CompiledClass).%OpenId(..%ClassName(1))
 		if '$isobject(tCDef) {
 			write "// Unable to find class definition ",..%ClassName(1),!
 			quit

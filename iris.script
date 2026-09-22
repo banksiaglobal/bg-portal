@@ -7,4 +7,6 @@
 
     zn "USER"
     zpm "load /home/irisowner/irisbuild/ -v":1:1
+    // The sample extension is a separate module; keep the fresh image showing it.
+    zpm "load /home/irisowner/irisbuild/extensions/portal-ext-example -v":1:1
     halt

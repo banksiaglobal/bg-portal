@@ -5,7 +5,9 @@ pages carrying Vue templates, a thin `Banksia.Bloom` runtime, and a declarative
 extension registry. No SPA, no client router, no frontend build for extensions.
 
 See [`docs/architecture.md`](docs/architecture.md) for the architecture,
-how to add a page and how to write an extension, and
+how to add a page and how to write an extension,
+[`docs/writing-an-extension.md`](docs/writing-an-extension.md) for the extension API
+(columns, actions, fields, widgets, components), and
 [`docs/adding-a-management-screen.md`](docs/adding-a-management-screen.md) for the
 recipe behind the Web Application / User screens.
 
@@ -18,6 +20,26 @@ src/vue/                 frontend entry (PrimeVue, Tailwind, the few global Vue 
 src/csp/portal/          CSP application root; ui/ is the build output (ignored)
 module.xml               ZPM module: packages + /csp/portal web application
 ```
+
+## Extensions
+
+Extensions are ObjectScript classes extending `Portal.Ext.Contribution`, packaged as
+their own ZPM modules under `extensions/<module>/` (convention `portal-ext-*`), each
+with a `module.xml` and its own package. The core module never references them. The
+reference implementation is `extensions/portal-ext-example/` (package
+`PortalExt.Example`), which the dev image loads after core so a fresh
+`docker compose up --build` shows it; it is a normal module you can
+`zpm "uninstall portal-ext-example"`.
+
+To load or reload an extension in the running dev container (the `extensions/` folder
+is mounted at `/home/irisowner/extensions/`):
+
+```bash
+docker compose exec iris iris session IRIS -U USER 'zpm "load /home/irisowner/extensions/portal-ext-example"'
+```
+
+See [`docs/writing-an-extension.md`](docs/writing-an-extension.md) for the API,
+manifest, lifecycle hooks and module layout.
 
 ## Run locally
 
@@ -53,7 +75,8 @@ set ^Portal.Config("SYSTEM_TYPE") = "LIVE"   ; LIVE | TEST | DEV (default DEV)
 - `ClientMethod`s are emitted into the Vue `methods` block; they are `async` only when
   the body contains `await`, so plain helpers can be used in template expressions.
 - Anything referenced from an XData template as a component must be registered in
-  `src/vue/components.ts` (PrimeVue components are registered in `primeVue.ts`).
+  `src/vue/components.ts` (PrimeVue components are registered in `primeVue.ts`) —
+  except Bloom components, which pages emit and register at request time.
 - Tailwind scans `src/cls` for class names, so a new utility class in a template
   needs a rebuild of the frontend bundle.
 

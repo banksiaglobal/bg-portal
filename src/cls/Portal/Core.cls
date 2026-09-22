@@ -1,11 +1,27 @@
-/// Built-in shell content. The portal's own navigation is just the first contribution,
-/// so site extensions and core items go through exactly the same path.
+/// Built-in shell content and the core row actions. The portal's own navigation is just
+/// the first contribution, so site extensions and core items go through exactly the same
+/// path. Reference for Contribute(slot): one dispatch per slot id, `when` for visibility.
 Class Portal.Core Extends Portal.Ext.Contribution
 {
 
 Parameter ORDER As INTEGER = 0;
 
-ClassMethod NavItems() As %DynamicArray
+ClassMethod Contribute(slot As %String) As %DynamicArray
+{
+    return:slot="shell.nav" ..Nav()
+    return:slot="shell.user-menu" ..UserMenu()
+    return:slot="shell.footer" ..Footer()
+    return:slot="page.webapp.list.actions" ..WebAppActions()
+    return:slot="page.user.list.actions" ..UserActions()
+    return:slot="page.process.list.actions" ..ProcessActions()
+    return:slot="page.websession.list.actions" ..WebSessionActions()
+    return:slot="page.websession.list.bulk-actions" ..WebSessionBulkActions()
+    return:slot="page.role.list.actions" ..RoleActions()
+    return:slot="page.resource.list.actions" ..ResourceActions()
+    return []
+}
+
+ClassMethod Nav() As %DynamicArray
 {
     return [
         {"id": "home", "label": "Home", "icon": "pi pi-home", "url": "Portal.Home.cls", "order": 0},
@@ -26,7 +42,7 @@ ClassMethod NavItems() As %DynamicArray
     ]
 }
 
-ClassMethod UserMenuItems() As %DynamicArray
+ClassMethod UserMenu() As %DynamicArray
 {
     return [
         {"id": "classic", "label": "Classic portal", "icon": "pi pi-external-link", "url": "/csp/sys/UtilHome.csp", "order": 100},
@@ -34,30 +50,24 @@ ClassMethod UserMenuItems() As %DynamicArray
     ]
 }
 
-ClassMethod FooterItems() As %DynamicArray
+ClassMethod Footer() As %DynamicArray
 {
     return [
-        {"id": "safemode", "label": "Safe mode", "url": "?safemode=1", "order": 900}
+        {"id": "safemode", "label": "Safe mode", "url": "?safemode=1", "order": 900, "role": "%All"}
     ]
 }
 
-ClassMethod Actions(pageId As %String) As %DynamicArray
+ClassMethod WebAppActions() As %DynamicArray
 {
-    return:pageId="user.list" ..UserActions()
-    return:pageId="process.list" ..ProcessActions()
-    return:pageId="websession.list" ..WebSessionActions()
-    return:pageId="role.list" ..RoleActions()
-    return:pageId="resource.list" ..ResourceActions()
-    return:pageId'="webapp.list" []
     return [
         {"id": "edit", "label": "Edit", "icon": "pi pi-pencil", "kind": "navigate",
          "url": "Portal.WebApp.Edit.cls?name={Name}", "order": 10},
         {"id": "disable", "label": "Disable", "icon": "pi pi-pause", "kind": "server", "severity": "warn", "confirm": true,
          "class": "Portal.WebApp.Service", "method": "Disable", "order": 20, "resource": "%Admin_Secure",
-         "visibleIf": {"field": "Enabled", "equals": true}},
+         "when": "row.Enabled"},
         {"id": "enable", "label": "Enable", "icon": "pi pi-play", "kind": "server", "severity": "success",
          "class": "Portal.WebApp.Service", "method": "Enable", "order": 20, "resource": "%Admin_Secure",
-         "visibleIf": {"field": "Enabled", "equals": false}},
+         "when": "!row.Enabled"},
         {"id": "delete", "label": "Delete", "icon": "pi pi-trash", "kind": "server", "severity": "danger", "confirm": true,
          "class": "Portal.WebApp.Service", "method": "Delete", "order": 90, "resource": "%Admin_Secure"}
     ]
@@ -70,10 +80,10 @@ ClassMethod UserActions() As %DynamicArray
          "url": "Portal.User.Edit.cls?name={Name}", "order": 10},
         {"id": "disable", "label": "Disable", "icon": "pi pi-pause", "kind": "server", "severity": "warn", "confirm": true,
          "class": "Portal.User.Service", "method": "Disable", "order": 20, "resource": "%Admin_Secure",
-         "visibleIf": {"field": "Enabled", "equals": true}},
+         "when": "row.Enabled"},
         {"id": "enable", "label": "Enable", "icon": "pi pi-play", "kind": "server", "severity": "success",
          "class": "Portal.User.Service", "method": "Enable", "order": 20, "resource": "%Admin_Secure",
-         "visibleIf": {"field": "Enabled", "equals": false}},
+         "when": "!row.Enabled"},
         {"id": "delete", "label": "Delete", "icon": "pi pi-trash", "kind": "server", "severity": "danger", "confirm": true,
          "class": "Portal.User.Service", "method": "Delete", "order": 90, "resource": "%Admin_Secure"}
     ]
@@ -86,13 +96,13 @@ ClassMethod ProcessActions() As %DynamicArray
          "url": "Portal.Process.Detail.cls?id={Pid}", "order": 10},
         {"id": "suspend", "label": "Suspend", "icon": "pi pi-pause", "kind": "server", "severity": "warn",
          "class": "Portal.Process.Service", "method": "Suspend", "order": 20, "resource": "%Admin_Operate",
-         "visibleIf": {"field": "CanBeSuspended", "equals": true}},
+         "when": "row.CanBeSuspended"},
         {"id": "resume", "label": "Resume", "icon": "pi pi-play", "kind": "server", "severity": "success",
          "class": "Portal.Process.Service", "method": "Resume", "order": 20, "resource": "%Admin_Operate",
-         "visibleIf": {"field": "State", "equals": "SUSP"}},
+         "when": "row.State == 'SUSP'"},
         {"id": "terminate", "label": "Terminate", "icon": "pi pi-times", "kind": "server", "severity": "danger", "confirm": true,
          "class": "Portal.Process.Service", "method": "Terminate", "order": 90, "resource": "%Admin_Operate",
-         "visibleIf": {"field": "CanBeTerminated", "equals": true}}
+         "when": "row.CanBeTerminated"}
     ]
 }
 
@@ -113,7 +123,15 @@ ClassMethod ResourceActions() As %DynamicArray
          "url": "Portal.Resource.Edit.cls?name={Name}", "order": 10},
         {"id": "delete", "label": "Delete", "icon": "pi pi-trash", "kind": "server", "severity": "danger", "confirm": true,
          "class": "Portal.Resource.Service", "method": "Delete", "order": 90, "resource": "%Admin_Secure",
-         "visibleIf": {"field": "AllowDelete", "equals": true}}
+         "when": "row.AllowDelete"}
+    ]
+}
+
+ClassMethod WebSessionBulkActions() As %DynamicArray
+{
+    return [
+        {"id": "end-selected", "label": "End sessions", "icon": "pi pi-sign-out", "severity": "danger", "confirm": true,
+         "class": "Portal.WebSession.Service", "method": "EndSessions", "order": 10, "resource": "%Admin_Operate"}
     ]
 }
 
@@ -122,7 +140,7 @@ ClassMethod WebSessionActions() As %DynamicArray
     return [
         {"id": "end", "label": "End session", "icon": "pi pi-sign-out", "kind": "server", "severity": "danger", "confirm": true,
          "class": "Portal.WebSession.Service", "method": "EndSession", "order": 90, "resource": "%Admin_Operate",
-         "visibleIf": {"field": "AllowEndSession", "equals": true}}
+         "when": "row.AllowEndSession && !row.IsCurrent"}
     ]
 }
 

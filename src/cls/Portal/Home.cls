@@ -1,3 +1,5 @@
+/// Landing page: navigation tiles plus whatever extensions contribute to the
+/// "page.home.widgets.dashboard" slot.
 Class Portal.Home Extends Portal.Page
 {
 
@@ -18,7 +20,7 @@ Property navItems As %DynamicArray;
 Method %OnNew() As %Status
 {
     set ..navItems = []
-    set items = ##class(Portal.Ext.Registry).NavItems()
+    set items = ##class(Portal.Ext.Registry).Collect("shell.nav")
     set iter = items.%GetIterator()
     while iter.%GetNext(.i, .item) {
         continue:item.id="home"
@@ -45,6 +47,8 @@ XData Template [ MimeType = text/vue ]
       </div>
     </a>
   </div>
+
+  <ext-slot name="dashboard" class="mt-8" />
 </div>
 }
 
