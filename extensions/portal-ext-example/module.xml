@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Export generator="Cache" version="25">
-  <Document name="portal-ext-example.ZPM">
+  <Document name="bg-portal-ext-example.ZPM">
     <Module>
-      <Name>portal-ext-example</Name>
+      <Name>bg-portal-ext-example</Name>
       <Version>0.1.0</Version>
       <Description>Reference extension for the IRIS Portal: one class per hook, shipped as a separate module.</Description>
       <Keywords>iris-portal extension</Keywords>
@@ -10,7 +10,7 @@
       <SourcesRoot>src</SourcesRoot>
       <Dependencies>
         <ModuleReference>
-          <Name>portal</Name>
+          <Name>bg-portal</Name>
           <Version>0.1.*</Version>
         </ModuleReference>
       </Dependencies>
