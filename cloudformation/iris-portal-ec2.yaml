@@ -1,0 +1,221 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  EC2 instance running the bg-portal IRIS Docker image (from GHCR) behind
+  nginx, terminating TLS for portal.cloud.banksia.global via Let's Encrypt,
+  with HTTP->HTTPS redirect.
+
+Parameters:
+  DomainName:
+    Type: String
+    Default: portal.cloud.banksia.global
+    Description: Public DNS name that will point at this instance's Elastic IP.
+
+  AdminEmail:
+    Type: String
+    Description: Email address used for Let's Encrypt registration/renewal notices.
+
+  DockerImage:
+    Type: String
+    Default: ghcr.io/banksiaglobal/bg-portal:latest
+    Description: GHCR image to run.
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC to launch the instance in.
+
+  SubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: Public subnet (must auto-assign or route to an IGW) to launch the instance in.
+
+  InstanceType:
+    Type: String
+    Default: t3.medium
+    Description: EC2 instance type (IRIS Community needs at least 2 vCPU / 4GB RAM).
+
+  KeyPairName:
+    Type: String
+    Default: ''
+    Description: >
+      Optional EC2 key pair name for SSH access. Leave blank to rely on
+      SSM Session Manager only (recommended).
+
+  SSHAllowedCidr:
+    Type: String
+    Default: ''
+    Description: >
+      CIDR allowed to reach port 22 (e.g. 203.0.113.4/32). Leave blank to
+      disable SSH ingress entirely (use SSM Session Manager instead).
+
+Conditions:
+  HasKeyName: !Not [!Equals [!Ref KeyPairName, '']]
+  EnableSSH: !Not [!Equals [!Ref SSHAllowedCidr, '']]
+
+Resources:
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref InstanceRole
+
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: bg-portal EC2 - allow HTTP/HTTPS, optional SSH
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: '-1'
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: bg-portal-sg
+
+  SSHIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Condition: EnableSSH
+    Properties:
+      GroupId: !Ref InstanceSecurityGroup
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      CidrIp: !Ref SSHAllowedCidr
+
+  ElasticIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: bg-portal-eip
+
+  EIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId: !GetAtt ElasticIP.AllocationId
+      InstanceId: !Ref Instance
+
+  Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      SubnetId: !Ref SubnetId
+      ImageId: '{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}'
+      IamInstanceProfile: !Ref InstanceProfile
+      SecurityGroupIds:
+        - !Ref InstanceSecurityGroup
+      KeyName: !If [HasKeyName, !Ref KeyPairName, !Ref 'AWS::NoValue']
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 30
+            VolumeType: gp3
+      Tags:
+        - Key: Name
+          Value: bg-portal
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          dnf update -y
+          dnf install -y docker nginx python3-pip cronie
+          systemctl enable --now docker
+          systemctl enable --now crond
+          usermod -aG docker ec2-user
+
+          python3 -m pip install --upgrade pip
+          python3 -m pip install certbot certbot-nginx
+          ln -sf /usr/local/bin/certbot /usr/bin/certbot
+
+          docker pull ${DockerImage}
+          docker rm -f iris-portal || true
+          docker run -d --name iris-portal --restart unless-stopped \
+            -p 127.0.0.1:52773:52773 \
+            ${DockerImage}
+
+          mkdir -p /opt/portal
+
+          cat > /etc/nginx/conf.d/portal.conf <<'NGINX'
+          server {
+              listen 80;
+              server_name ${DomainName};
+
+              location / {
+                  proxy_pass http://127.0.0.1:52773;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+              }
+          }
+          NGINX
+
+          systemctl enable --now nginx
+          nginx -t && systemctl reload nginx
+
+          cat > /opt/portal/enable-https.sh <<EOS
+          #!/bin/bash -xe
+          # Run once DNS for ${DomainName} points at this instance's Elastic IP.
+          certbot --nginx -d ${DomainName} -m ${AdminEmail} --agree-tos --non-interactive --redirect
+          systemctl reload nginx
+          EOS
+          chmod +x /opt/portal/enable-https.sh
+
+          cat > /etc/cron.d/certbot-renew <<'CRON'
+          0 3 * * * root certbot renew --quiet --nginx && systemctl reload nginx
+          CRON
+
+          cat > /opt/portal/update-container.sh <<EOS
+          #!/bin/bash
+          set -euo pipefail
+          IMAGE="${DockerImage}"
+          echo "\$(date -Is) pulling \$IMAGE and recreating container (demo env refresh)"
+          docker pull "\$IMAGE"
+          docker rm -f iris-portal || true
+          docker run -d --name iris-portal --restart unless-stopped \\
+            -p 127.0.0.1:52773:52773 \\
+            "\$IMAGE"
+          EOS
+          chmod +x /opt/portal/update-container.sh
+
+          cat > /etc/cron.d/portal-update <<'CRON'
+          */10 * * * * root /opt/portal/update-container.sh >> /var/log/portal-update.log 2>&1
+          CRON
+
+          # Best-effort first attempt; harmless if DNS isn't pointed here yet.
+          /opt/portal/enable-https.sh || echo "certbot failed - DNS likely not pointed at this instance yet. Re-run /opt/portal/enable-https.sh once it is."
+
+Outputs:
+  ElasticIP:
+    Description: Public IP to point the domain at (A record).
+    Value: !Ref ElasticIP
+
+  InstanceId:
+    Description: EC2 instance ID.
+    Value: !Ref Instance
+
+  HTTPSSetupNote:
+    Description: How to (re)issue the TLS certificate after DNS is configured.
+    Value: !Sub >-
+      Point ${DomainName} (A record) at the ElasticIP output, then run
+      'sudo /opt/portal/enable-https.sh' on the instance (via SSM Session
+      Manager or SSH) if it wasn't already picked up automatically on boot.
