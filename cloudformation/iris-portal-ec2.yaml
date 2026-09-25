@@ -142,8 +142,7 @@ Resources:
           systemctl enable --now crond
           usermod -aG docker ec2-user
 
-          python3 -m pip install --upgrade pip
-          python3 -m pip install certbot certbot-nginx
+          python3 -m pip install --ignore-installed certbot certbot-nginx
           ln -sf /usr/local/bin/certbot /usr/bin/certbot
 
           docker pull ${DockerImage}
