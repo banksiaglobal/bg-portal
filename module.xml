@@ -22,7 +22,7 @@
         UnauthenticatedEnabled="0"
         CSRFToken="1"
         DefaultTimeout="9000"
-        ChangePasswordPage="Portal.DemoLogin.cls"
+        LoginClass="Portal.DemoLogin.cls"
       />
       <FileCopy Name="/src/csp/portal/" Target="${cspdir}portal/" />
     </Module>
