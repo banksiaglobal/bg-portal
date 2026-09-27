@@ -26,6 +26,11 @@ Parameter SEVERITIES = "primary,secondary,success,info,warn,danger,contrast,help
 
 Parameter FIELDTYPES = "text,number,password,date,textarea,select,multiselect,toggle,perms";
 
+/// Field types a bulk-action's own dialog (`fields`) may use. A superset of FIELDTYPES:
+/// `tristate` is bulk-only (a nullable boolean - "leave unchanged" is a real, distinct
+/// state alongside set/clear, unlike a plain `toggle`, which always applies one way).
+Parameter BULKFIELDTYPES = "text,number,textarea,select,multiselect,toggle,tristate";
+
 Parameter COLUMNTYPES = "text,boolean,tag,mono";
 
 /// The slot kind of a slot id: shell.* is "items", page.<id>.<kind>[.<name>] is the kind.
@@ -134,9 +139,10 @@ ClassMethod For(kind As %String) As %DynamicObject
                 "icon": {"type": "string"},
                 "severity": {"type": "string", "enum": (severities)},
                 "resource": {"type": "string", "doc": "Re-checked on invocation."},
-                "confirm": {"type": "boolean"},
+                "confirm": {"type": "boolean", "doc": "Ignored when `fields` is set; the dialog itself is the confirmation step."},
                 "when": {"type": "when", "doc": "Display expression; scope {rows} (the selection)."},
-                "class": {"type": "string", "required": true, "doc": "ClassMethod(rows As %DynamicArray) As %Status."},
+                "fields": {"type": "array", "doc": ("Optional: opens a dialog collecting these before running, instead of confirm/immediate. Each item: {key*, label*, type, placeholder, help, options, optionsClass, optionsMethod, onLabel, offLabel, unchangedLabel, default}. type is one of " _ ..#BULKFIELDTYPES _ " (default text); tristate is a nullable boolean (null = leave unchanged, true = onLabel/'Set', false = offLabel/'Clear'). options is a literal array; optionsClass/optionsMethod (ClassMethod() As %DynamicArray) resolve it fresh on every request instead, for choices that change (e.g. current role names).")},
+                "class": {"type": "string", "required": true, "doc": "ClassMethod(rows As %DynamicArray) As %Status, or ClassMethod(rows As %DynamicArray, form As %DynamicObject) As %Status when `fields` is set."},
                 "method": {"type": "string", "required": true}
             },
             "example": {"id": "acme.export", "label": "Export", "icon": "pi pi-download", "confirm": true, "class": "Acme.Portal.Ext", "method": "Export", "when": "rows.length <= 50", "order": 10}

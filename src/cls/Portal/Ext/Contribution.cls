@@ -30,8 +30,19 @@
 ///   actions            {id*, label*, kind*, order, icon, severity, resource, confirm, when,
 ///                       url   (kind "navigate": {Field} placeholders are resolved from the row and URL-encoded; {Field|raw} is not),
 ///                       class, method (kind "server": ClassMethod(row As %DynamicObject) As %Status)}
-///   bulk-actions       {id*, label*, order, icon, severity, resource, confirm, when,
-///                       class*, method* (ClassMethod(rows As %DynamicArray) As %Status)}
+///   bulk-actions       {id*, label*, order, icon, severity, resource, confirm, when, fields,
+///                       class*, method* (ClassMethod(rows As %DynamicArray) As %Status, or
+///                       ClassMethod(rows As %DynamicArray, form As %DynamicObject) As %Status
+///                       when `fields` is set)}
+///                      fields: opens a dialog collecting these before running, instead of
+///                      confirm/immediate - [{key*, label*, type, placeholder, help, options,
+///                      optionsClass, optionsMethod, onLabel, offLabel, unchangedLabel, default}].
+///                      type is text|number|textarea|select|multiselect|toggle|tristate (default
+///                      text); tristate is a nullable boolean (null "leave unchanged", true "Set"/
+///                      onLabel, false "Clear"/offLabel). options is a literal array;
+///                      optionsClass/optionsMethod (ClassMethod() As %DynamicArray) resolve it
+///                      fresh every request instead of baking a snapshot into the cached
+///                      Contribute() output - use these for choices that can change, like role names.
 ///   fields             {key*, label*, type, order, section, colSpan, placeholder, help, options, resource,
 ///                       when, newOnly, existingOnly, class, loader, method}
 ///                      the value is kept under obj[key] on the client only; the extension persists it itself:

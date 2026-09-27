@@ -92,19 +92,55 @@ Property error As %String;
 
 Property notice As %String;
 
+/// Set while a bulk action's own form dialog (its `fields`) is open.
+Property bulkFormVisible As %Boolean [ InitialExpression = 0 ];
+
+/// The bulk action whose dialog is open, so the template can read its label/fields.
+Property bulkFormAction As %DynamicObject;
+
+/// Values collected in the open bulk-form dialog, keyed by field.key.
+Property bulkForm As %DynamicObject [ InitialExpression = {{}} ];
+
 Method %OnNew() As %Status
 {
     set ..columns = ..BuildColumns()
     set ..actions = ##class(Portal.Ext.Registry).Collect("page." _ ..#PAGEID _ ".actions")
     set ..bulkActions = ##class(Portal.Ext.Registry).Collect("page." _ ..#PAGEID _ ".bulk-actions")
+    do ..ResolveBulkFieldOptions(..bulkActions)
     set:..bulkActions.%Size() ..multi = 1
     set ..rows = ..BuildRows(..columns)
     return $$$OK
 }
 
+/// A bulk action's fields may name optionsClass/optionsMethod instead of a literal
+/// `options` array, so select/multiselect fields can offer live choices (e.g. current
+/// role names) without baking a stale snapshot into the cached Contribute() output.
+/// Resolved fresh every request; a failing lookup logs against the contribution and
+/// falls back to an empty option list rather than breaking the page.
+ClassMethod ResolveBulkFieldOptions(bulkActions As %DynamicArray)
+{
+    set iter = bulkActions.%GetIterator()
+    while iter.%GetNext(.i, .action) {
+        continue:'$isobject(action.fields)
+        set fiter = action.fields.%GetIterator()
+        while fiter.%GetNext(.j, .field) {
+            continue:(field.optionsClass="")||(field.optionsMethod="")
+            try {
+                do field.%Set("options", $classmethod(field.optionsClass, field.optionsMethod))
+            } catch ex {
+                set ^Portal.Ext("error", action.source, "bulk-actions:" _ action.id _ ":" _ field.key) = ex.DisplayString()
+                do field.%Set("options", [])
+            }
+        }
+    }
+}
+
 /// Dispatcher for bulk actions: the registry re-applies the resource check, and the
-/// audit row records the selected row keys rather than every row.
-ClassMethod InvokeBulkAction(actionId As %String, rowsJson As %String) As %String [ WebMethod ]
+/// audit row records the selected row keys rather than every row. When the action
+/// declares `fields`, the dialog's collected values are decoded and passed as a second
+/// argument (ClassMethod(rows As %DynamicArray, form As %DynamicObject) As %Status);
+/// otherwise the method is called the original way, with just the rows.
+ClassMethod InvokeBulkAction(actionId As %String, rowsJson As %String, formJson As %String = "") As %String [ WebMethod ]
 {
     set action = ##class(Portal.Ext.Registry).FindItem("page." _ ..#PAGEID _ ".bulk-actions", actionId)
     return:'$isobject(action) ..ActionResult($$$ERROR($$$GeneralError, "Unknown bulk action '" _ actionId _ "'"))
@@ -113,7 +149,12 @@ ClassMethod InvokeBulkAction(actionId As %String, rowsJson As %String) As %Strin
     set iter = rows.%GetIterator()
     while iter.%GetNext(.i, .row) { do keys.%Push(row.%Get(..#ROWKEY)) }
     set ^Portal.Audit($increment(^Portal.Audit)) = $listbuild($horolog, $username, ..#PAGEID, actionId, action.source, keys.%ToJSON())
-    set sc = $classmethod(action.class, action.method, rows)
+    if $isobject(action.fields) && action.fields.%Size() {
+        set form = {}.%FromJSON($select(formJson="": "{}", 1: formJson))
+        set sc = $classmethod(action.class, action.method, rows, form)
+    } else {
+        set sc = $classmethod(action.class, action.method, rows)
+    }
     return ..ActionResult(sc)
 }
 
@@ -216,12 +257,54 @@ ClientMethod visibleBulkActions() [ Language = javascript ]
 
 ClientMethod runBulk(action) [ Language = javascript ]
 {
+    if (action.fields && action.fields.length) {
+        this.bulkFormAction = action;
+        this.bulkForm = {};
+        for (const f of action.fields) this.bulkForm[f.key] = this.bulkFieldDefault(f);
+        this.bulkFormVisible = true;
+        return;
+    }
     this.pending = { action, rows: this.selected.slice() };
     if (action.confirm) {
         this.confirmVisible = true;
         return;
     }
     await this.executePending();
+}
+
+/// Seed value for one bulk-form field: its own `default` when given, else a type-shaped
+/// empty value (tristate fields start at "leave unchanged").
+ClientMethod bulkFieldDefault(f) [ Language = javascript ]
+{
+    if (f.default !== undefined) return f.default;
+    if (f.type === 'multiselect') return [];
+    if (f.type === 'tristate') return null;
+    if (f.type === 'toggle') return false;
+    return '';
+}
+
+ClientMethod bulkOptionsOf(f) [ Language = javascript ]
+{
+    return Array.isArray(f.options) ? f.options : [];
+}
+
+/// Runs the open bulk-form action against the current selection, then reloads like
+/// executePending (a partial failure may have changed some rows before erroring on one).
+ClientMethod submitBulkForm() [ Language = javascript ]
+{
+    this.error = '';
+    this.notice = '';
+    const action = this.bulkFormAction;
+    const rows = this.selected.slice();
+    const result = JSON.parse(await this.InvokeBulkAction(action.id, JSON.stringify(rows), JSON.stringify(this.bulkForm)));
+    this.bulkFormVisible = false;
+    if (result.ok) this.selected = [];
+    await this.refresh();
+    if (!result.ok) {
+        this.error = result.error;
+        return;
+    }
+    this.notice = action.label + ': ' + rows.length + ' row' + (rows.length === 1 ? '' : 's') + ' processed.';
 }
 
 /// Text for the confirm dialog: the row, or the size of the selection.
@@ -400,6 +483,30 @@ XData Template [ MimeType = text/vue ]
                  :message="'This will ' + (pending.action ? pending.action.label.toLowerCase() : '') + ' ' + describePending() + ' on this instance.'"
                  :confirmLabel="pending.action ? pending.action.label : 'Confirm'"
                  @confirm="executePending" />
+
+  <Dialog v-model:visible="bulkFormVisible" modal :header="bulkFormAction ? bulkFormAction.label : ''" :style="{ width: '640px' }">
+    <p class="text-sm text-gray-600 mb-4">Applies to {{ selected.length }} selected row{{ selected.length === 1 ? '' : 's' }}.</p>
+    <div class="grid grid-cols-1 gap-3">
+      <div v-for="f in (bulkFormAction ? bulkFormAction.fields : [])" :key="f.key" class="flex flex-col gap-1">
+        <label class="text-sm font-medium">{{ f.label }}</label>
+        <SelectButton v-if="f.type === 'tristate'" v-model="bulkForm[f.key]"
+                      :options="[{ label: f.unchangedLabel || 'Leave unchanged', value: null }, { label: f.onLabel || 'Set', value: true }, { label: f.offLabel || 'Clear', value: false }]"
+                      optionLabel="label" optionValue="value" />
+        <MultiSelect v-else-if="f.type === 'multiselect'" v-model="bulkForm[f.key]" :options="bulkOptionsOf(f)" filter :placeholder="f.placeholder" display="chip" />
+        <Select v-else-if="f.type === 'select'" v-model="bulkForm[f.key]" :options="bulkOptionsOf(f)" :placeholder="f.placeholder" :showClear="!!f.clearable" />
+        <Textarea v-else-if="f.type === 'textarea'" v-model="bulkForm[f.key]" rows="3" fluid autoResize :placeholder="f.placeholder" />
+        <ToggleSwitch v-else-if="f.type === 'toggle'" v-model="bulkForm[f.key]" />
+        <InputText v-else v-model="bulkForm[f.key]" :placeholder="f.placeholder" />
+        <span v-if="f.help" class="text-xs text-gray-500">{{ f.help }}</span>
+      </div>
+    </div>
+    <template #footer>
+      <div class="flex justify-end gap-2">
+        <PButton label="Cancel" severity="secondary" outlined size="small" @click="bulkFormVisible = false" />
+        <PButton :label="bulkFormAction ? bulkFormAction.label : 'Apply'" icon="pi pi-check" size="small" @click="submitBulkForm" />
+      </div>
+    </template>
+  </Dialog>
 
   @include ExtraTemplate
 </div>
