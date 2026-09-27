@@ -158,6 +158,10 @@ Resources:
               listen 80;
               server_name ${DomainName};
 
+              location = / {
+                  return 302 /csp/portal/Portal.Home.cls;
+              }
+
               location / {
                   proxy_pass http://127.0.0.1:52773;
                   proxy_set_header Host $host;

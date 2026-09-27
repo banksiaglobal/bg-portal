@@ -1,0 +1,8 @@
+    // CI only: publish every module in this repo to the GHCR package registry.
+    // Credentials and the module list come from the environment set up in the Dockerfile.
+    zn "USER"
+    set ghuser=$system.Util.GetEnviron("GH_USERNAME"),ghns=$system.Util.GetEnviron("GH_NAMESPACE"),ghtoken=$system.Util.GetEnviron("GH_TOKEN")
+    zpm "repo -o -n github -url ghcr.io -namespace "_ghns_" -username "_ghuser_" -password "_ghtoken
+    set modules=$system.Util.GetEnviron("PUBLISH_MODULES")
+    for i=1:1:$length(modules," ") { set m=$piece(modules," ",i) if m'="" { zpm "publish "_m_" -v" } }
+    halt

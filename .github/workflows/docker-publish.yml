@@ -52,5 +52,12 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            GITHUB_ACTIONS=true
+            GH_USERNAME=${{ github.actor }}
+            GH_NAMESPACE=${{ github.repository_owner }}
+          # Token is only passed for non-PR builds, so PRs build but never publish modules.
+          secrets: |
+            ${{ github.event_name != 'pull_request' && format('gh_token={0}', secrets.GITHUB_TOKEN) || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
