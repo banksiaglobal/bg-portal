@@ -9,7 +9,7 @@
       <SourcesRoot>src</SourcesRoot>
       <Resource Name="Banksia.PKG"/>
       <Resource Name="Portal.PKG"/>
-      <WebApplication
+      <CSPApplication
         Url="/csp/portal"
         SourcePath="/src/csp/portal"
         DeployPath="${cspdir}/portal"
