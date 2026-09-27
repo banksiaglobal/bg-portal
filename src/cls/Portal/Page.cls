@@ -48,6 +48,18 @@ ClassMethod OnPreHTTP() As %Boolean
     return 1
 }
 
+/// %CSP.Broker calls this before every WebMethod of the page and of the components
+/// emitted on it (their tokens name this page), so RESOURCE also guards calls made
+/// after the render: a token outlives any role the user loses mid-session. An error
+/// makes the broker refuse the call.
+ClassMethod OnPreHyperEvent(class As %String, method As %String) As %Status
+{
+    if (..#RESOURCE '= "") && '$system.Security.Check(..#RESOURCE, "USE") {
+        return $$$ERROR($$$GeneralError, "Access denied: " _ class _ "." _ method _ " requires " _ ..#RESOURCE _ ":USE")
+    }
+    return $$$OK
+}
+
 ClassMethod OnPage() As %Status
 {
     return ##super(..#TITLE _ " - " _ ##class(Portal.Context).SystemName())

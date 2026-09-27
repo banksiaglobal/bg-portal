@@ -15,7 +15,9 @@ XData Template
 <child-outlet></child-outlet>
 }
 
-ClassMethod WriteComponentJs(componentName As %String = {$translate(..%ClassName(1),".-%")}, childName = "") As %Status [ ServerOnly = 1 ]
+/// pageClass is the page the component is emitted on; its WebMethod tokens name it so
+/// %CSP.Broker runs that page's OnPreHyperEvent (and its access check) on every call.
+ClassMethod WriteComponentJs(componentName As %String = {$translate(..%ClassName(1),".-%")}, childName = "", pageClass As %String = "") As %Status [ ServerOnly = 1 ]
 {
 
 	set self=..%New()
@@ -46,7 +48,7 @@ ClassMethod WriteComponentJs(componentName As %String = {$translate(..%ClassName
 	quit:$$$ISERR(status) status
 	write "`,",!
 	write "methods: {",!
-	set status = self.WriteMethods()
+	set status = self.WriteMethods(pageClass)
 	quit:$$$ISERR(status) status
 	write "},",!
 	write "}; ",!,!,!
@@ -106,7 +108,10 @@ Method GetXssSafeString(str) As %String [ ServerOnly = 1 ]
 	return $replace($replace($replace(str,"<","\u003c"),">","\u003e"),"&","\u0026")
 }
 
-Method WriteMethods() As %Status [ ServerOnly = 1 ]
+/// WebMethods become serverCall() stubs carrying a broker token for "Class.Method", or
+/// "Class.Method:pageClass" when pageClass is given, so the broker calls
+/// pageClass.OnPreHyperEvent before running the method.
+Method WriteMethods(pageClass As %String = "") As %Status [ ServerOnly = 1 ]
 {
 	set tSC = $$$OK
 
@@ -136,8 +141,11 @@ Method WriteMethods() As %Status [ ServerOnly = 1 ]
 					write tStream.ReadLine(),!
 				}
 			} else {
+				// "Class.Method:PageClass" makes %CSP.Broker call PageClass.OnPreHyperEvent first.
+				set event = $classname()_"."_Method.Name
+				set:pageClass'="" event = event_":"_pageClass
 				write Method.Name_": async function() {"
-				write "return serverCall("""_$$$cspEncodeBroker(%session.Key,$listbuild($classname()_"."_Method.Name))_""",['',...arguments]);"
+				write "return serverCall("""_$$$cspEncodeBroker(%session.Key,$listbuild(event))_""",['',...arguments]);"
 			}
 			write "},"
 		}

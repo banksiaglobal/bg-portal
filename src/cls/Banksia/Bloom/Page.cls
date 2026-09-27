@@ -58,7 +58,7 @@ ClassMethod OnPage(title = "BG") As %Status [ ProcedureBlock = 1, ServerOnly = 1
 		continue:isLayout
 		continue:'##class(%Dictionary.CompiledClass).%ExistsId(class)
 		set emitted(class) = ""
-		set componentStatus = $classmethod(class, "WriteComponentJs", $translate(class, ".-%"), "")
+		set componentStatus = $classmethod(class, "WriteComponentJs", $translate(class, ".-%"), "", ..%ClassName(1))
 		if $$$ISERR(componentStatus) {
 			write "</script>",!
 			quit
@@ -137,7 +137,8 @@ ClassMethod WriteComponents(ByRef layouts) As %Status [ ServerOnly = 1 ]
 			layouts(index),
 			"WriteComponentJs",
 			$translate(layouts(index), ".-%"),
-			$translate($get(layouts(index+1)), ".-%")
+			$translate($get(layouts(index+1)), ".-%"),
+			..%ClassName(1)
 		)
 		quit:$$$ISERR(status)
 	}
@@ -209,7 +210,7 @@ Method WriteProps() As %Status [ ServerOnly = 1 ]
 	quit tSC
 }
 
-Method WriteMethods() As %Status [ ServerOnly = 1 ]
+Method WriteMethods(pageClass As %String = "") As %Status [ ServerOnly = 1 ]
 {
 	set tSC = $$$OK
 
@@ -243,8 +244,11 @@ Method WriteMethods() As %Status [ ServerOnly = 1 ]
 					}
 				}
 			} else {
+				// "Class.Method:PageClass" makes %CSP.Broker call PageClass.OnPreHyperEvent first.
+				set event = $classname()_"."_Method.Name
+				set:pageClass'="" event = event_":"_pageClass
 				write Method.Name_": async function() {"
-				write "return serverCall("""_$$$cspEncodeBroker(%session.Key,$listbuild($classname()_"."_Method.Name))_""",['',...arguments]);"
+				write "return serverCall("""_$$$cspEncodeBroker(%session.Key,$listbuild(event))_""",['',...arguments]);"
 			}
 			write "},"
 		}
