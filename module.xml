@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Export generator="Cache" version="25">
-  <Document name="bg-portal.ZPM">
+  <Document name="bg-portal-core.ZPM">
     <Module>
-      <Name>bg-portal</Name>
+      <Name>bg-portal-core</Name>
       <Version>0.1.0</Version>
       <Description>Banksia Global IRIS management portal</Description>
       <Packaging>module</Packaging>

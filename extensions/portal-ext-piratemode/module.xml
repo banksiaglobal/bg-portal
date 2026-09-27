@@ -10,7 +10,7 @@
       <SourcesRoot>src</SourcesRoot>
       <Dependencies>
         <ModuleReference>
-          <Name>bg-portal</Name>
+          <Name>bg-portal-core</Name>
           <Version>0.1.*</Version>
         </ModuleReference>
       </Dependencies>
