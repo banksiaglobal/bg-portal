@@ -11,7 +11,7 @@
       <Resource Name="Portal.PKG"/>
       <CSPApplication
         Url="/csp/portal"
-        SourcePath="src/csp/portal"
+        SourcePath="/src/csp/portal"
         DeployPath="${cspdir}/portal"
         ServeFiles="1"
         Recurse="1"
@@ -23,7 +23,7 @@
         CSRFToken="1"
         DefaultTimeout="9000"
       />
-      <FileCopy Name="src/csp/portal/" Target="${cspdir}/portal/" />
+      <FileCopy Name="/src/csp/portal/" Target="${cspdir}portal/" />
     </Module>
   </Document>
 </Export>
