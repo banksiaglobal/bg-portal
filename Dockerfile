@@ -4,6 +4,7 @@ FROM $IMAGE
 WORKDIR /home/irisowner/irisbuild
 USER root
 RUN mkdir -p /usr/irissys/csp/portal && chown ${ISC_PACKAGE_MGRUSER}:${ISC_PACKAGE_IRISGROUP} /usr/irissys/csp/portal
+COPY --chown=${ISC_PACKAGE_MGRUSER}:${ISC_PACKAGE_IRISGROUP} src/csp/portal/ /usr/irissys/csp/portal/
 USER ${ISC_PACKAGE_MGRUSER}
 
 # Set by the GitHub Actions workflow; when building there, modules are also published to GHCR.
