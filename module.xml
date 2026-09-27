@@ -11,7 +11,7 @@
       <Resource Name="Portal.PKG"/>
       <CSPApplication
         Url="/csp/portal"
-        SourcePath="/src/csp/portal"
+        SourcePath="src/csp/portal"
         DeployPath="${cspdir}/portal"
         ServeFiles="1"
         Recurse="1"
