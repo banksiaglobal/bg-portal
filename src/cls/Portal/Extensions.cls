@@ -1,10 +1,11 @@
 /// Installed extensions: manifest (name, id, version, publisher, ZPM module, required
 /// resources), state, lifecycle and slot errors, id collisions, with the switch to
-/// disable any of them and an Uninstall (retire) action, plus the extension points
-/// reference: every slot with how many items are currently contributed to it and,
-/// expanded, the item schema (keys, types, allowed values) with an example. Reachable
-/// in safe mode (?safemode=1) so a contribution that breaks the shell can still be
-/// turned off from here; "Clear cache" drops the registry's cached hook output.
+/// disable any of them and an Uninstall (retire) action (neither for Portal.Core),
+/// plus the extension points reference: every slot with how many items are currently
+/// contributed to it and, expanded, the item schema (keys, types, allowed values) with
+/// an example. Reachable in safe mode (?safemode=1) so a contribution that breaks the
+/// shell can still be turned off from here; "Clear cache" drops the registry's cached
+/// hook output.
 Class Portal.Extensions Extends Portal.Page
 {
 
@@ -239,6 +240,7 @@ XData Template [ MimeType = text/vue ]
             <div class="text-sm font-medium flex items-center gap-2">
               {{ data.name }}
               <Tag v-if="data.version" :value="'v' + data.version" severity="secondary" />
+              <Tag v-if="data.core" value="core" severity="info" v-tooltip.top="'Built into the portal; always enabled'" />
               <Tag v-if="data.retired" value="retired" severity="warn" />
               <Tag v-if="!data.compatible" :value="'API v' + data.apiVersion" severity="danger" v-tooltip.top="'Written against another extension API version; not loaded'" />
             </div>
@@ -277,13 +279,13 @@ XData Template [ MimeType = text/vue ]
         </Column>
         <Column header="Enabled" :headerStyle="{ width: '1%' }">
           <template #body="{ data }">
-            <ToggleSwitch v-if="!data.retired" :modelValue="data.enabled" @update:modelValue="toggle(data)" />
+            <ToggleSwitch v-if="!data.retired && !data.core" :modelValue="data.enabled" @update:modelValue="toggle(data)" />
           </template>
         </Column>
         <Column header="" :headerStyle="{ width: '1%' }">
           <template #body="{ data }">
             <PButton v-if="data.retired" icon="pi pi-replay" label="Reinstall" size="small" severity="secondary" outlined @click="runReinstall(data)" />
-            <PButton v-else icon="pi pi-trash" text rounded size="small" severity="danger" v-tooltip.top="'Uninstall (retire)'" aria-label="Uninstall" @click="askUninstall(data)" />
+            <PButton v-else-if="!data.core" icon="pi pi-trash" text rounded size="small" severity="danger" v-tooltip.top="'Uninstall (retire)'" aria-label="Uninstall" @click="askUninstall(data)" />
           </template>
         </Column>
         <template #expansion="{ data }">

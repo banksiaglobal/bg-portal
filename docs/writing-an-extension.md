@@ -21,7 +21,8 @@ The reference implementation is the separate module in
 (`PortalExt.Example.Contribution`); it exercises every hook below. `Portal.Extensions.cls`
 shows each installed extension with its manifest, lets you switch it off or retire it,
 and lists its last errors and any id collisions. `?safemode=1` on any page loads no
-extensions at all.
+extensions at all, only `Portal.Core`, which is always enabled and cannot be disabled
+or retired.
 
 ## Manifest
 

@@ -10,8 +10,11 @@
 ///   ^Portal.Ext("override", slot, targetId) = $lb(class, newId)  item replaced (newId) or hidden ("") by class
 ///   ^Portal.Ext("warning", class, slot) = text          items kept despite unknown keys (Portal.Ext.Schema)
 ///   ^Portal.Ext("cache", fingerprint, class, slot) = json  validated raw output of Contribute(slot), see below
-/// Requesting any page with ?safemode=1 (as a %All user) loads no contributions at all,
-/// so a broken extension can always be disabled from Portal.Extensions.cls.
+/// Portal.Core can be neither disabled nor retired: it is always enabled, and stale
+/// "disabled"/"retired" state recorded against it is ignored.
+/// Requesting any page with ?safemode=1 (as a %All user) loads only Portal.Core and
+/// bypasses the cache, so the shell keeps its navigation and a broken extension can
+/// always be disabled from Portal.Extensions.cls.
 ///
 /// Cache: discovery (one %Dictionary query per request) yields a fingerprint of the
 /// contribution set - every concrete class with its compile time, the disabled/retired
@@ -28,6 +31,9 @@ Class Portal.Ext.Registry Extends %RegisteredObject
 {
 
 Parameter APIVERSION As INTEGER = 2;
+
+/// The built-in contribution; always loaded, including in safe mode.
+Parameter CORE = "Portal.Core";
 
 /// Only a user holding %All may request it; for anyone else ?safemode=1 is ignored.
 ClassMethod SafeMode() As %Boolean
@@ -123,11 +129,13 @@ ClassMethod Discover() As %DynamicObject
 
 ClassMethod IsEnabled(class As %String) As %Boolean
 {
+    return:class=..#CORE 1
     return '$get(^Portal.Ext("disabled", class), 0)
 }
 
 ClassMethod IsRetired(class As %String) As %Boolean
 {
+    return:class=..#CORE 0
     return $data(^Portal.Ext("retired", class))
 }
 
@@ -136,6 +144,7 @@ ClassMethod IsRetired(class As %String) As %Boolean
 ClassMethod SetEnabled(class As %String, enabled As %Boolean) As %Status
 {
     return:enabled=..IsEnabled(class) $$$OK
+    return:class=..#CORE $$$ERROR($$$GeneralError, "'" _ class _ "' is the portal core and cannot be disabled")
     set hook = $select(enabled: "OnEnable", 1: "OnDisable")
     set sc = ..RunHook(class, hook)
     return:$$$ISERR(sc) sc
@@ -212,6 +221,7 @@ ClassMethod SyncClasses(classes As %List) As %Status
 ClassMethod Uninstall(class As %String, retire As %Boolean = 1) As %Status
 {
     return:'$listfind(..DiscoverClasses(), class) $$$ERROR($$$GeneralError, "'" _ class _ "' is not a contribution")
+    return:retire&&(class=..#CORE) $$$ERROR($$$GeneralError, "'" _ class _ "' is the portal core and cannot be uninstalled")
     set sc = ..RunHook(class, "OnUninstall")
     return:$$$ISERR(sc) sc
     kill ^Portal.Ext("installed", class), ^Portal.Ext("disabled", class), ^Portal.Ext("incompatible", class), ^Portal.Ext("error", class), ^Portal.Ext("warning", class), ^Portal.Ext("retired", class)
@@ -279,6 +289,7 @@ ClassMethod AllContributions() As %DynamicArray
         do item.%Set("compatible", item.apiVersion = ..#APIVERSION, "boolean")
         do item.%Set("enabled", ..IsEnabled(class), "boolean")
         do item.%Set("retired", ..IsRetired(class), "boolean")
+        do item.%Set("core", class = ..#CORE, "boolean")
         do out.%Push(item)
     }
     return ..Sort(out)
@@ -286,9 +297,10 @@ ClassMethod AllContributions() As %DynamicArray
 
 /// Enabled, installed, version-compatible contributions in load order, as a $list of
 /// class names. Discovery runs Sync, so a freshly compiled class gets its OnInstall here.
+/// In safe mode only Portal.Core.
 ClassMethod Contributions() As %List
 {
-    return:..SafeMode() ""
+    return:..SafeMode() $listbuild(..#CORE)
     set ctx = ..Context()
     set classes = ctx.classes
     if 'ctx.synced {
@@ -359,7 +371,7 @@ ClassMethod Collect(slot As %String) As %DynamicArray
 {
     kill ^Portal.Ext("override", slot)
     set list = ..Contributions()
-    set fingerprint = ..Context().fingerprint
+    set fingerprint = $select(..SafeMode(): "", 1: ..Context().fingerprint)
     set ptr = 0
     set loadOrder = 0
     set n = 0
