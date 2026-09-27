@@ -4,12 +4,12 @@
     <Module>
       <Name>bg-portal</Name>
       <Version>0.1.0</Version>
-      <Description>IRIS management portal</Description>
+      <Description>Banksia Global IRIS management portal</Description>
       <Packaging>module</Packaging>
       <SourcesRoot>src</SourcesRoot>
       <Resource Name="Banksia.PKG"/>
       <Resource Name="Portal.PKG"/>
-      <CSPApplication
+      <WebApplication
         Url="/csp/portal"
         SourcePath="/src/csp/portal"
         DeployPath="${cspdir}/portal"
@@ -17,12 +17,13 @@
         Recurse="1"
         CookiePath="/csp/portal"
         UseCookies="2"
-        MatchRoles=":${dbrole}"
+        MatchRoles=":${globalsDbRole}"
         PasswordAuthEnabled="1"
         UnauthenticatedEnabled="0"
         CSRFToken="1"
-        DefaultTimeout="900"
+        DefaultTimeout="9000"
       />
+      <FileCopy Name="src/csp/portal/" Target="${cspdir}/portal/" />
     </Module>
   </Document>
 </Export>

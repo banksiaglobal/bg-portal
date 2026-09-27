@@ -9,6 +9,7 @@
     zpm "load /home/irisowner/irisbuild/ -v"
     // The sample extension is a separate module; keep the fresh image showing it.
     zpm "load /home/irisowner/irisbuild/extensions/portal-ext-example -v"
+    zpm "load /home/irisowner/irisbuild/extensions/portal-ext-user-bulk-edit -v"
     // Load pirate mode but keep it disabled
     zpm "load /home/irisowner/irisbuild/extensions/portal-ext-piratemode -v"
     do ##class(Portal.Ext.Registry).SetEnabled("PortalExt.PirateMode.Contribution", 0)
