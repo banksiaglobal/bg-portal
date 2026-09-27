@@ -1,8 +1,10 @@
 # IRIS Portal
 
-A page-per-class management portal for InterSystems IRIS. Server-rendered ObjectScript
+An extensible management portal for InterSystems IRIS. Server-rendered ObjectScript
 pages carrying Vue templates, a thin `Banksia.Bloom` runtime, and a declarative
-extension registry. No SPA, no client router, no frontend build for extensions.
+extension registry.
+
+![Extensions screen listing the core portal and the installed extension modules](docs/images/extensions.png)
 
 See [`docs/architecture.md`](docs/architecture.md) for the architecture,
 how to add a page and how to write an extension,
@@ -10,6 +12,17 @@ how to add a page and how to write an extension,
 (columns, actions, fields, widgets, components), and
 [`docs/adding-a-management-screen.md`](docs/adding-a-management-screen.md) for the
 recipe behind the Web Application / User screens.
+
+## Demo
+
+A live demo runs at <https://portal.cloud.banksia.global> until November 2026. It runs
+the latest published Docker image, and the container is recreated every 10 minutes,
+so any changes you make there are discarded.
+
+The demo is deployed with the CloudFormation template in
+[`cloudformation/iris-portal-ec2.yaml`](cloudformation/iris-portal-ec2.yaml). It
+sets up an EC2 instance with an Elastic IP, running the image behind nginx with a
+Let's Encrypt certificate. Use it to host your own copy.
 
 ## Layout
 
@@ -25,11 +38,11 @@ module.xml               ZPM module: packages + /csp/portal web application
 
 Extensions are ObjectScript classes extending `Portal.Ext.Contribution`, packaged as
 their own ZPM modules under `extensions/<module>/` (convention `portal-ext-*`), each
-with a `module.xml` and its own package. The core module never references them. The
+with a `module.xml` and its own package. The
 reference implementation is `extensions/portal-ext-example/` (package
 `PortalExt.Example`), which the dev image loads after core so a fresh
-`docker compose up --build` shows it; it is a normal module you can
-`zpm "uninstall portal-ext-example"`.
+`docker compose up --build` shows it; it is just a normal module so you can
+`zpm "uninstall bg-portal-ext-example"`.
 
 To load or reload an extension in the running dev container (the `extensions/` folder
 is mounted at `/home/irisowner/extensions/`):
@@ -41,7 +54,54 @@ docker compose exec iris iris session IRIS -U USER 'zpm "load /home/irisowner/ex
 See [`docs/writing-an-extension.md`](docs/writing-an-extension.md) for the API,
 manifest, lifecycle hooks and module layout.
 
-## Run locally
+## Run with Docker
+
+A prebuilt image with the core portal and the sample, user bulk change and (disabled)
+pirate mode extensions is published on every push to `main`:
+
+```bash
+docker run -d --name iris-portal -p 52773:52773 -p 1972:1972 \
+  ghcr.io/banksiaglobal/bg-portal:latest
+```
+
+Open <http://localhost:52773/csp/portal/Portal.Home.cls> and log in as `_SYSTEM` /
+`SYS`.
+
+## Install with ZPM
+
+The modules are published as public packages to the `banksiaglobal` namespace on
+GitHub Container Registry. In an IRIS terminal with ZPM installed, add the registry
+(no repo credentials needed to install):
+
+```objectscript
+zn "USER"
+zpm "repo -o -n banksiaglobal -url ghcr.io -namespace banksiaglobal"
+```
+
+Install the core portal and the extensions:
+
+```objectscript
+zpm "install bg-portal-core"
+zpm "install bg-portal-ext-example"          // sample extension
+zpm "install bg-portal-ext-user-bulk-edit"   // bulk change form for users
+```
+
+Optionally, install pirate mode:
+
+```objectscript
+zpm "install bg-portal-ext-piratemode"
+```
+
+It is enabled as soon as it is installed. To keep it installed but switched off:
+
+```objectscript
+do ##class(Portal.Ext.Registry).SetEnabled("PortalExt.PirateMode.Contribution", 0)
+```
+
+(pass `1` to switch it back on). Then open `/csp/portal/Portal.Home.cls` on the
+instance's web server.
+
+## Build and develop locally
 
 ```bash
 docker compose up -d --build     # IRIS on http://localhost:59873, SuperServer 59872
