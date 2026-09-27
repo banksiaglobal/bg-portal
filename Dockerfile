@@ -12,7 +12,7 @@ ARG GH_USERNAME
 ARG GH_NAMESPACE
 
 RUN --mount=type=bind,src=.,dst=. \
-    --mount=type=secret,id=gh_token \
+    --mount=type=secret,id=gh_token,mode=0444 \
     iris start IRIS && \
     iris session IRIS < iris.script && \
     if [ "$GITHUB_ACTIONS" = "true" ] && [ -s /run/secrets/gh_token ]; then \
